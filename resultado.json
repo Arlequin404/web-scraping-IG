@@ -1,0 +1,58 @@
+{
+  "username": "arlequin.404",
+  "fullName": "Nota...arlequin.404OpcionesAlex1 publicación26 seguidores111 seguidosThreadsarlequin.404",
+  "bio": "Nota...",
+  "category": "",
+  "profilePic": "https://instagram.fuio23-1.fna.fbcdn.net/v/t51.82787-19/670009600_17861861043675405_1404524148924713443_n.jpg?stp=dst-jpg_s150x150_tt6&efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLmRqYW5nby4xMDgwLmMyIn0&_nc_ht=instagram.fuio23-1.fna.fbcdn.net&_nc_cat=109&_nc_oc=Q6cZ2gGSsahkRMPkJtA0tfTQENwDHJtReOXv5TGDCwLPY9671HJw2QDMWMTL8gXTw3-zf0Y-0eq6S_Fw_GdmFYEGoVD8&_nc_ohc=XePPOGogZtoQ7kNvwHSO4ZG&_nc_gid=WNmzb844YwyXkotQDA5YuQ&edm=AP4sbd4BAAAA&ccb=7-5&oh=00_Af1ar5QOwS5J0c5mXNccF777NLjMmpyCqWQbZ5A08KobFA&oe=69EB03B1&_nc_sid=7a9f4b",
+  "isVerified": false,
+  "hasContact": false,
+  "stats": {
+    "posts": 1,
+    "followers": 26,
+    "following": 111,
+    "ratio": 0.23
+  },
+  "isPrivate": false,
+  "externalLink": "https://www.threads.com/@arlequin.404?xmt=AQF0KSwuG5IzN-AnhPQ_bmqZlymgSf8U1CpCa49EM0xlfKA",
+  "analysis": {
+    "totalAnalyzed": 1,
+    "engagementRate": "0.00%",
+    "avgLikes": 0,
+    "avgComments": 0,
+    "publicationFrequency": "No determinada",
+    "contentTypeDistribution": {
+      "Image": 1,
+      "Video": 0,
+      "Carousel": 0
+    },
+    "topPostingDays": [
+      {
+        "value": "domingo",
+        "count": 1
+      }
+    ],
+    "topPostingHours": [
+      {
+        "value": "20:00",
+        "count": 1
+      }
+    ],
+    "commonHashtags": [],
+    "commonMentions": [],
+    "dominantLanguage": "Detectado por bio/posts"
+  },
+  "posts": [
+    {
+      "url": "https://www.instagram.com/arlequin.404/p/DUzLZXskYts/",
+      "isPinned": false,
+      "type": "Image",
+      "caption": "",
+      "hashtags": [],
+      "mentions": [],
+      "date": "2026-02-16T01:03:27.000Z",
+      "likes": 0,
+      "comments": 0,
+      "location": "Ubicaciones"
+    }
+  ]
+}
