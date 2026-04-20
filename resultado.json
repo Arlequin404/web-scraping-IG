@@ -1,58 +1,87 @@
 {
-  "username": "arlequin.404",
-  "fullName": "Nota...arlequin.404OpcionesAlex1 publicación26 seguidores111 seguidosThreadsarlequin.404",
-  "bio": "Nota...",
-  "category": "",
-  "profilePic": "https://instagram.fuio23-1.fna.fbcdn.net/v/t51.82787-19/670009600_17861861043675405_1404524148924713443_n.jpg?stp=dst-jpg_s150x150_tt6&efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLmRqYW5nby4xMDgwLmMyIn0&_nc_ht=instagram.fuio23-1.fna.fbcdn.net&_nc_cat=109&_nc_oc=Q6cZ2gGSsahkRMPkJtA0tfTQENwDHJtReOXv5TGDCwLPY9671HJw2QDMWMTL8gXTw3-zf0Y-0eq6S_Fw_GdmFYEGoVD8&_nc_ohc=XePPOGogZtoQ7kNvwHSO4ZG&_nc_gid=WNmzb844YwyXkotQDA5YuQ&edm=AP4sbd4BAAAA&ccb=7-5&oh=00_Af1ar5QOwS5J0c5mXNccF777NLjMmpyCqWQbZ5A08KobFA&oe=69EB03B1&_nc_sid=7a9f4b",
-  "isVerified": false,
-  "hasContact": false,
-  "stats": {
-    "posts": 1,
-    "followers": 26,
-    "following": 111,
-    "ratio": 0.23
+  "profile": {
+    "profileId": "",
+    "username": "es_wonder__",
+    "fullName": "",
+    "bio": "Solamente eres tú contra el mundo...",
+    "accountType": "personal",
+    "isBusinessAccount": false,
+    "isCreatorAccount": false,
+    "isProfessionalAccount": false,
+    "businessCategory": "",
+    "publicEmail": null,
+    "publicPhone": null,
+    "businessAddress": "",
+    "category": "",
+    "profilePic": "https://instagram.fuio23-1.fna.fbcdn.net/v/t51.82787-19/658311298_18310732852278790_8350973636389177631_n.jpg?stp=dst-jpg_s150x150_tt6&efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLmRqYW5nby4xMDc3LmMyIn0&_nc_ht=instagram.fuio23-1.fna.fbcdn.net&_nc_cat=110&_nc_oc=Q6cZ2gFwDf56RZ7A2cTcf2Xq8DMaBfGg8WPjRfTdi06AQ4GZY2ucql735leNALoDVaFfFbfaTp6qbKV3P_yNTOcVCQO2&_nc_ohc=uPBNEMTCNzgQ7kNvwFmNQuc&_nc_gid=xo1ZlZhU07YcOhhAExOiUw&edm=ALGbJPMBAAAA&ccb=7-5&oh=00_Af0OT0RR5Yr_9jmILfXNHeVIWTwjXzQbEF7vloWB83SsSQ&oe=69EB7B32&_nc_sid=7d3ac5",
+    "isVerified": false,
+    "hasContact": false,
+    "stats": {
+      "posts": 0,
+      "followers": 96,
+      "following": 240,
+      "ratio": 0.4
+    },
+    "isPrivate": false,
+    "externalLink": "",
+    "threadsLink": "https://www.threads.com/@es_wonder__?xmt=AQF03jQTbjHBPZEmJPdHrZBqmT5EHwBrEyPinyagVjcdjA0",
+    "guessedEmail": "",
+    "guessedPhone": "",
+    "meta": {
+      "ogTitle": "Sebas Granda M (@es_wonder__) • Fotos y vídeos de Instagram",
+      "ogDescription": "96 seguidores, 240 siguiendo, 0 publicaciones - Ver fotos y vídeos de Instagram de Sebas Granda M (@es_wonder__)",
+      "description": "96 seguidores, 240 siguiendo, 0 publicaciones - Sebas Granda M (@es_wonder__) en Instagram: \"Solamente eres tú contra el mundo...\"",
+      "ogImage": "https://scontent.cdninstagram.com/v/t51.82787-19/658311298_18310732852278790_8350973636389177631_n.jpg?stp=dst-jpg_s100x100_tt6&_nc_cat=107&ccb=7-5&_nc_sid=bf7eb4&efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLnd3dy4xMDc3LkMzIn0%3D&_nc_ohc=g73rqJbGLssQ7kNvwErqLx9&_nc_oc=AdpTb8Ke6Ncqq9PjjpkKqngiDn313sZ8QSmKa9DaQhjgBkgYyU3ZGeBX2YOG4_GV4NG6GjVpymatUbAnmNLZ4GIA&_nc_zt=24&_nc_ht=scontent.cdninstagram.com&_nc_gid=_orN-BVZIWD_17ZbzMLRFA&_nc_ss=7a2a8&oh=00_Af2xOB2lNx3c1JL-zYWBe9mfm2ZpN4kyzLGoskcIhh5o-Q&oe=69EB7B32"
+    },
+    "lastPostDate": null,
+    "daysSinceLastPost": null,
+    "profileCreationEstimate": null
   },
-  "isPrivate": false,
-  "externalLink": "https://www.threads.com/@arlequin.404?xmt=AQF0KSwuG5IzN-AnhPQ_bmqZlymgSf8U1CpCa49EM0xlfKA",
-  "analysis": {
-    "totalAnalyzed": 1,
-    "engagementRate": "0.00%",
+  "posts": [],
+  "analytics": {
+    "totalAnalyzed": 0,
+    "engagementRateProfile": 0,
     "avgLikes": 0,
     "avgComments": 0,
+    "medianLikes": 0,
+    "medianComments": 0,
+    "avgViews": 0,
     "publicationFrequency": "No determinada",
-    "contentTypeDistribution": {
-      "Image": 1,
-      "Video": 0,
-      "Carousel": 0
-    },
-    "topPostingDays": [
-      {
-        "value": "domingo",
-        "count": 1
-      }
-    ],
-    "topPostingHours": [
-      {
-        "value": "20:00",
-        "count": 1
-      }
-    ],
-    "commonHashtags": [],
-    "commonMentions": [],
-    "dominantLanguage": "Detectado por bio/posts"
+    "dayOfWeekMode": null,
+    "hourOfDayMode": null,
+    "bestPostingHour": null,
+    "bestPostingDay": null,
+    "bestContentType": null,
+    "worstContentType": null,
+    "topPerformingPostId": null,
+    "viralScore": 0,
+    "engagementTrend": "stable",
+    "engagementVariance": 0,
+    "postingConsistencyScore": 0,
+    "avgPostingIntervalDays": 0,
+    "inactiveDays": null,
+    "locationFrequency": [],
+    "topLocation": "",
+    "followersGrowth": null,
+    "followersGrowthRate": null,
+    "postsGrowth": null,
+    "engagementGrowth": null
   },
-  "posts": [
-    {
-      "url": "https://www.instagram.com/arlequin.404/p/DUzLZXskYts/",
-      "isPinned": false,
-      "type": "Image",
-      "caption": "",
-      "hashtags": [],
-      "mentions": [],
-      "date": "2026-02-16T01:03:27.000Z",
-      "likes": 0,
-      "comments": 0,
-      "location": "Ubicaciones"
-    }
-  ]
+  "scrapeConfidence": 0.5,
+  "missingFields": [
+    "profile.publicEmail",
+    "profile.publicPhone",
+    "posts.caption",
+    "posts.likes",
+    "posts.comments",
+    "posts.location"
+  ],
+  "dataCompleteness": 0.5333,
+  "outlierScore": 0,
+  "scrapedAt": "2026-04-20T02:17:03.463Z",
+  "scrapeDuration": 17614,
+  "requestCount": 143,
+  "errorCount": 0,
+  "retryCount": 0,
+  "sourceType": "playwright"
 }
