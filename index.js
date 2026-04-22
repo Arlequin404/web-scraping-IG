@@ -1,20 +1,50 @@
-// Importa Playwright para controlar el navegador
+// ======================================================
+// SCRAPER DE INSTAGRAM CON PLAYWRIGHT
+// ------------------------------------------------------
+// Este script:
+// 1. Pide cookies para autenticar sesión en Instagram
+// 2. Entra a un perfil
+// 3. Extrae datos generales del perfil
+// 4. Recolecta enlaces de posts y reels
+// 5. Entra a cada publicación
+// 6. Extrae texto, engagement, multimedia y metadatos
+// 7. Calcula métricas analíticas
+// 8. Guarda dos salidas:
+//    - resultado_raw.json    -> salida técnica completa
+//    - resultado_limpio.json -> salida resumida y fácil de leer
+// ======================================================
+
+
+// ======================================================
+// IMPORTS
+// ======================================================
+
+// Controlador del navegador
 const { chromium } = require('playwright');
 
-// Importa fs para guardar el resultado en un archivo JSON
+// Manejo de archivos
 const fs = require('fs');
 
-// Importa readline para pedir cookies por consola
+// Entrada por consola
 const readline = require('readline');
 
 
 // ======================================================
-// PIDE LAS COOKIES AL USUARIO
-// Acepta:
-// 1) JSON completo con cookies
-// 2) cadena de cookies tipo "a=b; c=d; sessionid=..."
-// 3) solo el valor del sessionid
+// ENTRADA DE COOKIES
 // ======================================================
+
+/**
+ * Solicita cookies al usuario por consola.
+ *
+ * Formatos soportados:
+ * 1) JSON completo con cookies
+ * 2) cadena tipo "a=b; c=d; sessionid=..."
+ * 3) solo el valor de sessionid
+ *
+ * Devuelve:
+ * - objeto storageState compatible con Playwright
+ * - null si no se pudo interpretar
+ */
 function askCookies() {
   const rl = readline.createInterface({
     input: process.stdin,
@@ -26,14 +56,12 @@ function askCookies() {
     rl.question('> ', (answer) => {
       rl.close();
 
-      // Limpia espacios y comillas externas
       let input = (answer || '').trim();
       input = input.replace(/^>\s*/, '').replace(/^["']|["']$/g, '');
 
-      // Si no puso nada, devuelve null
       if (!input) return resolve(null);
 
-      // Caso 1: el usuario pegó JSON completo
+      // Caso 1: JSON completo
       if (input.startsWith('{')) {
         try {
           const parsed = JSON.parse(input);
@@ -48,7 +76,7 @@ function askCookies() {
         }
       }
 
-      // Caso 2: el usuario pegó cookies separadas por ;
+      // Caso 2: cookies separadas por ;
       if (input.includes('=')) {
         const cookies = input
           .split(';')
@@ -83,7 +111,7 @@ function askCookies() {
         return resolve({ cookies, origins: [] });
       }
 
-      // Caso 3: asumimos que el usuario pegó solo el valor de sessionid
+      // Caso 3: solo sessionid
       return resolve({
         cookies: [
           {
@@ -104,33 +132,39 @@ function askCookies() {
 
 
 // ======================================================
-// NORMALIZA LA URL DEL PERFIL
-// Acepta:
-// - usuario
-// - @usuario
-// - URL completa
-// Y devuelve siempre una URL válida de Instagram
+// NORMALIZACIÓN DE URL
 // ======================================================
+
+/**
+ * Convierte una entrada de perfil en una URL válida.
+ *
+ * Ejemplos válidos:
+ * - usuario
+ * - @usuario
+ * - https://www.instagram.com/usuario/
+ */
 function normalizeUrl(profileUrl) {
   if (!profileUrl) return 'https://www.instagram.com/instagram/';
   const trimmed = profileUrl.trim();
 
-  // Si ya vino URL completa
   if (/^https?:\/\//i.test(trimmed)) {
     return trimmed.endsWith('/') ? trimmed : `${trimmed}/`;
   }
 
-  // Si vino solo usuario o @usuario
   return `https://www.instagram.com/${trimmed.replace(/^@/, '').replace(/^\/+|\/+$/g, '')}/`;
 }
 
 
 // ======================================================
-// LIMPIA TEXTO
-// - quita espacios repetidos
-// - quita NBSP
-// - hace trim
+// UTILIDADES DE TEXTO Y FORMATO
 // ======================================================
+
+/**
+ * Limpia un texto:
+ * - quita NBSP
+ * - unifica espacios
+ * - aplica trim
+ */
 function cleanText(value) {
   return String(value || '')
     .replace(/\u00a0/g, ' ')
@@ -138,14 +172,32 @@ function cleanText(value) {
     .trim();
 }
 
+/**
+ * Devuelve solo la fecha YYYY-MM-DD de un ISO datetime.
+ */
+function formatDateOnly(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString().slice(0, 10);
+}
 
-// ======================================================
-// CONVIERTE NÚMEROS COMPACTOS A ENTEROS
-// Ejemplos:
-// "1,073" -> 1073
-// "1.2k" -> 1200
-// "2m" -> 2000000
-// ======================================================
+/**
+ * Formatea un número como porcentaje amigable.
+ * Ejemplo: 23.0196 -> "23.02%"
+ */
+function formatPercent(value, digits = 2) {
+  if (!Number.isFinite(value)) return "0%";
+  return `${value.toFixed(digits)}%`;
+}
+
+/**
+ * Convierte valores compactos o con separadores en enteros.
+ * Ejemplos:
+ * - "1,073" -> 1073
+ * - "1.2k"  -> 1200
+ * - "2m"    -> 2000000
+ */
 function parseCompactNumber(value) {
   if (value === null || value === undefined) return 0;
 
@@ -154,7 +206,6 @@ function parseCompactNumber(value) {
     .replace(/\u00a0/g, ' ')
     .trim();
 
-  // Caso con sufijo k / m / b
   const compact = text.match(/([\d.,]+)\s*([kmb])/i);
   if (compact) {
     let base = compact[1].replace(/,/g, '.');
@@ -170,24 +221,20 @@ function parseCompactNumber(value) {
     return Math.round(base * multiplier);
   }
 
-  // Caso número normal con separadores
   const digits = text.replace(/[^\d]/g, '');
   return parseInt(digits, 10) || 0;
 }
 
-
-// ======================================================
-// PROMEDIO SEGURO
-// Evita división por cero
-// ======================================================
+/**
+ * Promedio seguro evitando división por cero.
+ */
 function safeAverage(total, count) {
   return count > 0 ? total / count : 0;
 }
 
-
-// ======================================================
-// MEDIANA DE UN ARRAY NUMÉRICO
-// ======================================================
+/**
+ * Mediana de un arreglo numérico.
+ */
 function median(numbers) {
   const values = (numbers || []).filter((n) => Number.isFinite(n)).sort((a, b) => a - b);
   if (!values.length) return 0;
@@ -197,11 +244,10 @@ function median(numbers) {
     : values[mid];
 }
 
-
-// ======================================================
-// DEVUELVE LOS VALORES MÁS FRECUENTES
-// Sirve para topLocation, bestPostingHour, etc.
-// ======================================================
+/**
+ * Devuelve los valores más repetidos de una lista.
+ * Útil para horas, días y ubicaciones.
+ */
 function topN(items, limit = 3) {
   const counts = new Map();
 
@@ -215,20 +261,18 @@ function topN(items, limit = 3) {
     .map(([value, count]) => ({ value, count }));
 }
 
-
-// ======================================================
-// CUENTA EMOJIS EN UN TEXTO
-// ======================================================
+/**
+ * Cuenta emojis visibles en un texto.
+ */
 function countEmojis(text) {
   return (String(text || '').match(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu) || []).length;
 }
 
-
-// ======================================================
-// DETECCIÓN BÁSICA DE IDIOMA
-// Si encuentra caracteres típicos de español, devuelve "es"
-// Si no, "en"
-// ======================================================
+/**
+ * Detección básica de idioma.
+ * - es: si detecta señales claras de español
+ * - en: caso contrario
+ */
 function detectLanguage(text) {
   const t = String(text || '').toLowerCase();
   if (!t) return 'unknown';
@@ -236,11 +280,10 @@ function detectLanguage(text) {
   return 'en';
 }
 
-
-// ======================================================
-// SENTIMIENTO BÁSICO POR PALABRAS CLAVE
-// No es NLP avanzado, solo heurístico
-// ======================================================
+/**
+ * Análisis simple de sentimiento por palabras clave.
+ * No es NLP avanzado, solo heurístico.
+ */
 function simpleSentiment(text) {
   const t = String(text || '').toLowerCase();
   if (!t) return 'neutral';
@@ -257,11 +300,10 @@ function simpleSentiment(text) {
   return 'neutral';
 }
 
-
-// ======================================================
-// SUBJECTIVITY BÁSICA
-// Más palabras personales = más subjetivo
-// ======================================================
+/**
+ * Estimación simple de subjetividad.
+ * Más palabras personales = texto más subjetivo.
+ */
 function simpleSubjectivity(text) {
   const t = String(text || '').toLowerCase();
   if (!t) return 0;
@@ -272,11 +314,9 @@ function simpleSubjectivity(text) {
   return Math.min(1, score / 5);
 }
 
-
-// ======================================================
-// EXTRAE PALABRAS CLAVE FRECUENTES
-// Filtra stopwords comunes
-// ======================================================
+/**
+ * Extrae keywords relevantes quitando stopwords.
+ */
 function extractKeywords(text, limit = 10) {
   const stopwords = new Set([
     'the', 'and', 'for', 'with', 'this', 'that', 'from', 'your', 'have',
@@ -286,7 +326,7 @@ function extractKeywords(text, limit = 10) {
     'sobre', 'hasta', 'donde', 'cuando', 'likes', 'comments', 'followers',
     'seguidores', 'siguiendo', 'publicaciones', 'november', 'october',
     'august', 'january', 'february', 'march', 'april', 'may', 'june',
-    'july', 'september', 'december', 'mika', 'gamez', 'instagram'
+    'july', 'september', 'december', 'instagram'
   ]);
 
   const words = String(text || '')
@@ -305,10 +345,9 @@ function extractKeywords(text, limit = 10) {
     .map(([word]) => word);
 }
 
-
-// ======================================================
-// INFIERA CATEGORÍA DE CONTENIDO POR TEXTO
-// ======================================================
+/**
+ * Intenta clasificar el contenido del caption.
+ */
 function inferContentCategory(caption) {
   const text = String(caption || '').toLowerCase();
   if (!text) return 'unknown';
@@ -320,30 +359,27 @@ function inferContentCategory(caption) {
   return 'general';
 }
 
-
-// ======================================================
-// TOMA LOS PRIMEROS KEYWORDS COMO TOPICS
-// ======================================================
+/**
+ * Usa los primeros keywords como topics.
+ */
 function inferTopics(keywords) {
   return (keywords || []).slice(0, 5);
 }
 
-
-// ======================================================
-// SANEAMIENTO DE MÉTRICAS
-// - si es negativa o inválida -> 0
-// - si es demasiado absurda -> null
-// ======================================================
+/**
+ * Limpia métricas:
+ * - si no son válidas o negativas -> 0
+ * - si son absurdamente altas -> null
+ */
 function sanitizeMetric(value, maxReasonable = 10000000) {
   if (!Number.isFinite(value) || value < 0) return 0;
   if (value > maxReasonable) return null;
   return value;
 }
 
-
-// ======================================================
-// VARIANZA ESTADÍSTICA
-// ======================================================
+/**
+ * Varianza estadística.
+ */
 function calcVariance(values) {
   const arr = (values || []).filter((n) => Number.isFinite(n));
   if (!arr.length) return 0;
@@ -351,11 +387,10 @@ function calcVariance(values) {
   return arr.reduce((acc, v) => acc + Math.pow(v - avg, 2), 0) / arr.length;
 }
 
-
-// ======================================================
-// MIDE QUÉ TAN COMPLETO ESTÁ EL OBJETO FINAL
-// Recorre todo recursivamente y calcula proporción de campos presentes
-// ======================================================
+/**
+ * Calcula completitud del objeto final.
+ * Recorre todo recursivamente.
+ */
 function calculateCompleteness(obj) {
   const flatValues = [];
 
@@ -392,8 +427,12 @@ function calculateCompleteness(obj) {
 
 
 // ======================================================
-// CIERRA POPUPS DE COOKIES O DIALOGS DE INSTAGRAM
+// CONTROL DE INTERFAZ
 // ======================================================
+
+/**
+ * Cierra popups comunes de Instagram.
+ */
 async function dismissDialogs(page) {
   const labels = [
     'Permitir todas las cookies',
@@ -413,10 +452,9 @@ async function dismissDialogs(page) {
   }
 }
 
-
-// ======================================================
-// HACE SCROLL EN EL PERFIL PARA CARGAR MÁS POSTS
-// ======================================================
+/**
+ * Hace scroll varias veces para cargar más publicaciones.
+ */
 async function autoScrollProfile(page, rounds = 4) {
   for (let i = 0; i < rounds; i++) {
     try {
@@ -428,15 +466,20 @@ async function autoScrollProfile(page, rounds = 4) {
 
 
 // ======================================================
-// EXTRAE DATOS DEL PERFIL
-// - username
-// - bio
-// - fullName
-// - stats
-// - links externos
-// - verificación
-// - contacto
+// EXTRACCIÓN DEL PERFIL
 // ======================================================
+
+/**
+ * Extrae datos del perfil actual:
+ * - usuario
+ * - bio
+ * - nombre
+ * - estadísticas
+ * - links
+ * - señales de profesional/contacto
+ *
+ * Usa tanto DOM visible como metadatos HTML.
+ */
 async function extractProfile(page) {
   return page.evaluate(() => {
     const textOf = (el) => el?.textContent?.replace(/\s+/g, ' ')?.trim() || '';
@@ -450,7 +493,6 @@ async function extractProfile(page) {
     const ogDescription = getMeta('og:description');
     const ogImage = getMeta('og:image');
     const description = getMeta('description', 'name');
-
     const pageText = document.body.innerText.toLowerCase();
 
     const privateMarkers = [
@@ -470,7 +512,6 @@ async function extractProfile(page) {
     const statItems = Array.from(header.querySelectorAll('li'));
     const statTexts = statItems.map((li) => textOf(li)).filter(Boolean);
 
-    // Busca stats visibles en el header
     for (const t of statTexts) {
       const lower = t.toLowerCase();
       if (!rawStats.posts && /(publicaci|post)/i.test(lower)) rawStats.posts = t;
@@ -478,7 +519,6 @@ async function extractProfile(page) {
       if (!rawStats.following && /(siguiendo|seguidos|following)/i.test(lower)) rawStats.following = t;
     }
 
-    // Si no los encontró bien en el header, intenta con metadatos
     if (ogDescription) {
       const postsMatch =
         ogDescription.match(/([\d.,kmb]+)\s+Posts/i) ||
@@ -497,7 +537,6 @@ async function extractProfile(page) {
       if (!rawStats.following && followingMatch) rawStats.following = followingMatch[1];
     }
 
-    // Extrae bio desde meta description
     const metaBioMatch = description.match(/Instagram:\s*"([\s\S]*?)"\s*$/i);
     const metaBio = metaBioMatch ? metaBioMatch[1].trim() : '';
 
@@ -506,7 +545,6 @@ async function extractProfile(page) {
       .replace(/\s+/g, ' ')
       .trim();
 
-    // Intenta usar la primera línea de la bio como fullName
     if (metaBio) {
       const firstLine = metaBio.split('\n')[0]?.trim() || '';
       if (firstLine && firstLine.length <= 80) {
@@ -514,7 +552,6 @@ async function extractProfile(page) {
       }
     }
 
-    // Si no sale, toma el inicio de la bio
     if (!fullName && bio) {
       const bioStart = bio.split(/[📍#@]/)[0]?.trim() || '';
       if (bioStart && bioStart.length <= 80) {
@@ -587,11 +624,13 @@ async function extractProfile(page) {
 
 
 // ======================================================
-// RECOLECTA LINKS DE POSTS DEL PERFIL
-// - posts /p/
-// - reels /reel/
-// filtra contenido ajeno
+// RECOLECCIÓN DE POSTS
 // ======================================================
+
+/**
+ * Recolecta links de posts y reels visibles en el perfil.
+ * También filtra enlaces ajenos y elimina duplicados.
+ */
 async function collectPostLinks(page, profileUsername, limit = 24) {
   await page.waitForLoadState('domcontentloaded');
   await page.waitForTimeout(2500);
@@ -640,16 +679,21 @@ async function collectPostLinks(page, profileUsername, limit = 24) {
 
 
 // ======================================================
-// EXTRAE TODA LA INFO DE UN POST
-// - caption
-// - likes
-// - comments
-// - fecha
-// - location
-// - imágenes / videos
-// - métricas derivadas
-// - NLP básico
+// EXTRACCIÓN DE POSTS
 // ======================================================
+
+/**
+ * Extrae datos detallados de un post individual.
+ *
+ * Incluye:
+ * - caption
+ * - likes/comments/views
+ * - fecha
+ * - ubicación
+ * - multimedia
+ * - NLP básico
+ * - métricas derivadas
+ */
 async function scrapePost(context, item, profileUsername, profileFollowers) {
   const postPage = await context.newPage();
 
@@ -702,7 +746,6 @@ async function scrapePost(context, item, profileUsername, profileFollowers) {
         info.profileUsername ||
         '';
 
-      // Intenta sacar caption desde varios lugares
       const captionCandidates = [
         textOf(document.querySelector('article h1')),
         textOf(document.querySelector('article ul li h1')),
@@ -723,12 +766,10 @@ async function scrapePost(context, item, profileUsername, profileFollowers) {
         break;
       }
 
-      // Si no lo encontró visible, usa el meta description
       if (!caption && metaDescription) {
         caption = metaDescription;
       }
 
-      // Toma mucho texto visible para buscar likes/comments/views
       const visibleTexts = Array.from(document.querySelectorAll('section, span, div, a, button'))
         .map((el) => textOf(el))
         .filter(Boolean)
@@ -832,12 +873,10 @@ async function scrapePost(context, item, profileUsername, profileFollowers) {
       };
     }, { ...item, profileUsername });
 
-    // Convierte likes/comments/views a números
     let likes = parseCompactNumber(data.likesRaw);
     let comments = parseCompactNumber(data.commentsRaw);
     let views = parseCompactNumber(data.viewsRaw);
 
-    // Filtra lecturas absurdas
     if (profileFollowers > 0 && likes > Math.max(profileFollowers * 20, 50000)) {
       likes = null;
     }
@@ -859,7 +898,6 @@ async function scrapePost(context, item, profileUsername, profileFollowers) {
     const captionOriginal = cleanText(data.caption || '');
     let finalCaption = captionOriginal;
 
-    // Intenta sacar solo el texto entre comillas
     const quotedCaption =
       finalCaption.match(/:\s*"([\s\S]*?)"\.?$/) ||
       finalCaption.match(/:\s*“([\s\S]*?)”\.?$/) ||
@@ -869,7 +907,6 @@ async function scrapePost(context, item, profileUsername, profileFollowers) {
       finalCaption = cleanText(quotedCaption[1]);
     }
 
-    // Limpieza de prefijos, fechas y comillas sobrantes
     finalCaption = finalCaption
       .replace(/^\d[\d.,kmb]*\s+(likes|me gusta)\s*,?\s*\d[\d.,kmb]*\s+(comments|comentarios)\s*-\s*/i, '')
       .replace(/^[^:"]+\bel\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}:\s*/i, '')
@@ -886,7 +923,6 @@ async function scrapePost(context, item, profileUsername, profileFollowers) {
 
     const captionWordCount = finalCaption ? finalCaption.split(/\s+/).length : 0;
 
-    // Marca si realmente se encontró el dato o si quedó null
     const likesFound = likes !== null && likes !== undefined;
     const commentsFound = comments !== null && comments !== undefined;
     const viewsFound = views !== null && views !== undefined;
@@ -895,7 +931,6 @@ async function scrapePost(context, item, profileUsername, profileFollowers) {
     const safeComments = commentsFound ? comments : 0;
     const safeViews = viewsFound ? views : 0;
 
-    // Métricas de engagement
     const engagementRatePost = profileFollowers > 0
       ? Number((((safeLikes + safeComments) / profileFollowers) * 100).toFixed(4))
       : 0;
@@ -913,7 +948,6 @@ async function scrapePost(context, item, profileUsername, profileFollowers) {
         ? Number((data.media.resolution.width / data.media.resolution.height).toFixed(4))
         : null;
 
-    // NLP y categorización
     const contentCategory = inferContentCategory(finalCaption);
     const keywords = extractKeywords(finalCaption, 10);
     const topics = inferTopics(keywords);
@@ -986,15 +1020,143 @@ async function scrapePost(context, item, profileUsername, profileFollowers) {
 
 
 // ======================================================
-// FUNCIÓN PRINCIPAL
-// - abre navegador
-// - carga perfil
-// - extrae perfil
-// - recolecta posts
-// - scrapea posts
-// - calcula analytics
-// - guarda resultado.json
+// CONSTRUCCIÓN DE JSON LIMPIO
 // ======================================================
+
+/**
+ * Transforma el reporte técnico completo en una versión resumida,
+ * más ordenada y más fácil de entender para lectura humana.
+ *
+ * Esta función no reemplaza el JSON original.
+ * Solo genera una segunda salida más amigable.
+ */
+function buildReadableReport(finalReport) {
+  const profile = finalReport.profile || {};
+  const analytics = finalReport.analytics || {};
+  const posts = Array.isArray(finalReport.posts) ? finalReport.posts : [];
+
+  const cleanPosts = posts.map((post) => ({
+    id: post.shortcode || null,
+    fecha: formatDateOnly(post.date),
+    tipo: post.isReel ? 'Reel' : (post.isCarousel ? 'Carrusel' : 'Imagen'),
+    caption: post.captionClean || '',
+    idioma: post.captionLanguage === 'es' ? 'Español' :
+      post.captionLanguage === 'en' ? 'Inglés' : post.captionLanguage,
+    ubicacion: post.city || '',
+    engagement: {
+      likes: post.likes || 0,
+      comments: post.comments || 0,
+      views: post.views || 0,
+      engagementRatePost: formatPercent(post.engagementRatePost || 0),
+      engagementScore: post.engagementScore || 0
+    },
+    texto: {
+      emojiCount: post.emojiCount || 0,
+      hashtagsCount: post.hashtagsCount || 0,
+      mentionsCount: post.mentionsCount || 0,
+      sentiment: post.sentiment || 'neutral',
+      subjectivity: post.subjectivity || 0,
+      keywords: post.keywords || [],
+      topics: post.topics || []
+    },
+    multimedia: {
+      formato: post.isReel ? 'Video/Reel' : (post.isCarousel ? 'Carrusel' : 'Imagen'),
+      imageCount: post.imageCount || 0,
+      videoCount: post.videoCount || 0,
+      resolution: post.resolutionText || null,
+      duration: post.duration || null
+    }
+  }));
+
+  return {
+    resumen: {
+      usuario: profile.username || '',
+      nombre: profile.fullName || '',
+      cuentaPrivada: !!profile.isPrivate,
+      tipoCuenta: profile.accountType || 'personal',
+      seguidores: profile.stats?.followers || 0,
+      seguidos: profile.stats?.following || 0,
+      publicaciones: profile.stats?.posts || 0,
+      ultimaPublicacion: formatDateOnly(profile.lastPostDate),
+      diasSinPublicar: profile.daysSinceLastPost ?? null,
+      cuentaVerificada: !!profile.isVerified
+    },
+
+    perfil: {
+      username: profile.username || '',
+      fullName: profile.fullName || '',
+      bio: profile.bio || '',
+      accountType: profile.accountType || 'personal',
+      isBusinessAccount: !!profile.isBusinessAccount,
+      isCreatorAccount: !!profile.isCreatorAccount,
+      isProfessionalAccount: !!profile.isProfessionalAccount,
+      businessCategory: profile.businessCategory || '',
+      publicEmail: profile.publicEmail || null,
+      publicPhone: profile.publicPhone || null,
+      externalLink: profile.externalLink || '',
+      threadsLink: profile.threadsLink || ''
+    },
+
+    metricas_generales: {
+      engagementRateProfile: formatPercent(analytics.engagementRateProfile || 0),
+      promedioLikes: analytics.avgLikes || 0,
+      promedioComentarios: analytics.avgComments || 0,
+      medianaLikes: analytics.medianLikes || 0,
+      medianaComentarios: analytics.medianComments || 0,
+      promedioViews: analytics.avgViews || 0,
+      frecuenciaPublicacion: analytics.publicationFrequency || 'No determinada',
+      mejorHoraPublicacion: analytics.bestPostingHour || null,
+      mejorDiaPublicacion: analytics.bestPostingDay || null,
+      mejorTipoContenido: analytics.bestContentType || null,
+      peorTipoContenido: analytics.worstContentType || null,
+      engagementTrend: analytics.engagementTrend || 'stable',
+      engagementVariance: analytics.engagementVariance || 0,
+      postingConsistencyScore: analytics.postingConsistencyScore || 0,
+      intervaloPromedioDias: analytics.avgPostingIntervalDays || 0,
+      diasInactividad: analytics.inactiveDays ?? null,
+      topLocation: analytics.topLocation || '',
+      topPostId: analytics.topPerformingPostId || null,
+      viralScore: formatPercent(analytics.viralScore || 0)
+    },
+
+    posts_resumen: cleanPosts,
+
+    calidad: {
+      scrapeConfidence: finalReport.scrapeConfidence || 0,
+      dataCompleteness: finalReport.dataCompleteness || 0,
+      missingFields: finalReport.missingFields || [],
+      outlierScore: finalReport.outlierScore || 0
+    },
+
+    scraping_info: {
+      scrapedAt: finalReport.scrapedAt || null,
+      scrapeDurationMs: finalReport.scrapeDuration || 0,
+      requestCount: finalReport.requestCount || 0,
+      errorCount: finalReport.errorCount || 0,
+      retryCount: finalReport.retryCount || 0,
+      sourceType: finalReport.sourceType || 'playwright'
+    }
+  };
+}
+
+
+// ======================================================
+// FUNCIÓN PRINCIPAL
+// ======================================================
+
+/**
+ * Función principal del scraper.
+ *
+ * Flujo:
+ * 1. pide cookies
+ * 2. abre navegador
+ * 3. entra al perfil
+ * 4. extrae perfil
+ * 5. recoge posts
+ * 6. scrapea cada post
+ * 7. calcula analytics
+ * 8. genera JSON raw y JSON limpio
+ */
 async function expertScrape(profileUrlInput) {
   const startedAt = Date.now();
   const profileUrl = normalizeUrl(profileUrlInput);
@@ -1017,7 +1179,6 @@ async function expertScrape(profileUrlInput) {
     locale: 'es-ES'
   });
 
-  // Cuenta requests del navegador
   context.on('request', () => {
     requestCount++;
   });
@@ -1043,7 +1204,6 @@ async function expertScrape(profileUrlInput) {
     const cleanedFullName = cleanText(rawProfile.fullName);
     const cleanedBio = cleanText(rawProfile.bio);
 
-    // Construye el objeto perfil final
     const profile = {
       profileId: rawProfile.profileId || '',
       username: cleanText(rawProfile.username),
@@ -1083,9 +1243,10 @@ async function expertScrape(profileUrlInput) {
       meta: rawProfile.meta
     };
 
-    // Si la cuenta es privada, guarda solo el perfil y termina
+    // Si la cuenta es privada, genera salidas parciales y termina
     if (profile.isPrivate) {
       console.log('🔒 Cuenta privada. Guardando solo datos básicos.');
+
       const partial = {
         profile,
         posts: [],
@@ -1101,7 +1262,11 @@ async function expertScrape(profileUrlInput) {
         sourceType: 'playwright'
       };
 
-      fs.writeFileSync('resultado.json', JSON.stringify(partial, null, 2));
+      const partialReadable = buildReadableReport(partial);
+
+      fs.writeFileSync('resultado_raw.json', JSON.stringify(partial, null, 2));
+      fs.writeFileSync('resultado_limpio.json', JSON.stringify(partialReadable, null, 2));
+      console.log('✅ Archivos generados: resultado_raw.json y resultado_limpio.json');
       return;
     }
 
@@ -1120,7 +1285,6 @@ async function expertScrape(profileUrlInput) {
       }
     }
 
-    // Filtra seguridad adicional por owner / tipo de URL
     const detailedPosts = detailedPostsRaw
       .filter((post) => {
         const owner = (post.ownerUsername || '').toLowerCase();
@@ -1253,7 +1417,6 @@ async function expertScrape(profileUrlInput) {
       ? Math.floor((now - lastPostDate) / (1000 * 60 * 60 * 24))
       : null;
 
-    // Inserta frecuencia de location por post
     for (const post of detailedPosts) {
       post.locationFrequency = post.location
         ? locations.filter((loc) => loc === post.location).length
@@ -1261,7 +1424,6 @@ async function expertScrape(profileUrlInput) {
       post.topLocation = topLocations[0]?.value || '';
     }
 
-    // Construye analytics generales
     const analytics = {
       totalAnalyzed: analyzedCount,
       engagementRateProfile,
@@ -1330,9 +1492,13 @@ async function expertScrape(profileUrlInput) {
       sourceType: 'playwright'
     };
 
-    // Guarda el resultado final
-    fs.writeFileSync('resultado.json', JSON.stringify(finalReport, null, 2));
-    console.log('✅ Informe generado en resultado.json');
+    const readableReport = buildReadableReport(finalReport);
+
+    // Guarda ambas salidas
+    fs.writeFileSync('resultado_raw.json', JSON.stringify(finalReport, null, 2));
+    fs.writeFileSync('resultado_limpio.json', JSON.stringify(readableReport, null, 2));
+
+    console.log('✅ Archivos generados: resultado_raw.json y resultado_limpio.json');
   } catch (error) {
     errorCount++;
     console.error('❌ Error crítico:', error.message);
@@ -1345,7 +1511,7 @@ async function expertScrape(profileUrlInput) {
 
 // ======================================================
 // PUNTO DE ENTRADA
-// Si no se pasa argumento, usa instagram como ejemplo
 // ======================================================
+
 const target = process.argv[2] || 'https://www.instagram.com/instagram/';
 expertScrape(target);
